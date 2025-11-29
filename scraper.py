@@ -195,8 +195,8 @@ class WebsiteScraper:
 
 if __name__ == '__main__':
     # Configuration
-    TARGET_URL = 'https://www-n3d.nex-wlb.com/'
-    OUTPUT_DIR = 'ms-rajagacor'
+    TARGET_URL = ''
+    OUTPUT_DIR = ''
     
     # Create scraper and run
     scraper = WebsiteScraper(TARGET_URL, OUTPUT_DIR)
