@@ -1,0 +1,55 @@
+# Exclude everything by default
+*
+
+# But track these specific files
+!.gitignore
+!README.md
+!LICENSE
+!requirements.txt
+
+# Track Python scripts
+!scraper.py
+!scrap-everything.py
+!link-replacer.py
+
+# Track documentation files
+!*.md
+
+# Track configuration examples (if you have any)
+# !config.example.json
+# !.env.example
+
+# If you have a specific directory structure you want to track:
+# First, allow the directory itself
+# !docs/
+# Then allow files inside it
+# !docs/**
+
+# Common Python excludes (optional - remove if you want to track these)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDE and editor files (optional)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files (optional)
+.DS_Store
+Thumbs.db
+
+# Scraped output directories (you probably don't want to track these)
+scraped_website/
+scrap-result/
+*/scraped*/
+*.backup
