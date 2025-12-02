@@ -118,6 +118,62 @@ class WebsiteScraper:
         
         return re.sub(url_pattern, replace_url, css_content)
     
+    def process_images(self, soup):
+        """Process all image tags including amp-img, img, and others"""
+        print("\n=== Processing images ===")
+        
+        # List of tags and attributes that can contain image sources
+        image_selectors = [
+            ('img', 'src'),
+            ('amp-img', 'src'),
+            ('amp-anim', 'src'),
+            ('source', 'src'),
+            ('source', 'srcset'),
+            ('img', 'data-src'),
+            ('img', 'data-lazy-src'),
+        ]
+        
+        for tag_name, attr_name in image_selectors:
+            for tag in soup.find_all(tag_name):
+                if tag.get(attr_name):
+                    if attr_name == 'srcset':
+                        # Handle srcset (multiple images with different sizes)
+                        self.process_srcset(tag, attr_name)
+                    else:
+                        # Handle single src attribute
+                        img_url = urljoin(self.base_url, tag[attr_name])
+                        local_path = self.get_local_path(img_url, 'images')
+                        
+                        if self.download_file(img_url, local_path):
+                            tag[attr_name] = os.path.relpath(local_path, self.output_dir)
+        
+        # Also handle regular img srcset
+        for img in soup.find_all('img', srcset=True):
+            self.process_srcset(img, 'srcset')
+    
+    def process_srcset(self, tag, attr_name):
+        """Process srcset attribute which can contain multiple images"""
+        srcset_parts = []
+        for part in tag[attr_name].split(','):
+            part = part.strip()
+            if not part:
+                continue
+            
+            # Split URL and descriptor (e.g., "image.jpg 2x")
+            split_part = part.rsplit(' ', 1)
+            img_url_part = split_part[0]
+            descriptor = split_part[1] if len(split_part) > 1 else ''
+            
+            img_url = urljoin(self.base_url, img_url_part)
+            local_path = self.get_local_path(img_url, 'images')
+            
+            if self.download_file(img_url, local_path):
+                rel_path = os.path.relpath(local_path, self.output_dir)
+                srcset_parts.append(f"{rel_path} {descriptor}".strip())
+        
+        if srcset_parts:
+            tag[attr_name] = ', '.join(srcset_parts)
+    
     def scrape(self):
         """Main scraping function"""
         print(f"Fetching main page: {self.base_url}")
@@ -162,14 +218,8 @@ class WebsiteScraper:
             if self.download_file(js_url, local_path):
                 script['src'] = os.path.relpath(local_path, self.output_dir)
         
-        # Download images
-        print("\n=== Processing images ===")
-        for img in soup.find_all('img', src=True):
-            img_url = urljoin(self.base_url, img['src'])
-            local_path = self.get_local_path(img_url, 'images')
-            
-            if self.download_file(img_url, local_path):
-                img['src'] = os.path.relpath(local_path, self.output_dir)
+        # Process all images (including amp-img)
+        self.process_images(soup)
         
         # Download favicon
         print("\n=== Processing favicon ===")
@@ -180,6 +230,29 @@ class WebsiteScraper:
                 
                 if self.download_file(icon_url, local_path):
                     link['href'] = os.path.relpath(local_path, self.output_dir)
+        
+        # Process background images in style attributes
+        print("\n=== Processing inline styles ===")
+        for tag in soup.find_all(style=True):
+            style_content = tag['style']
+            if 'url(' in style_content:
+                url_pattern = r'url\([\'"]?([^\'")\s]+)[\'"]?\)'
+                
+                def replace_inline_url(match):
+                    resource_url = match.group(1)
+                    if resource_url.startswith('data:'):
+                        return match.group(0)
+                    
+                    abs_url = urljoin(self.base_url, resource_url)
+                    local_path = self.get_local_path(abs_url, 'images')
+                    
+                    if abs_url not in self.downloaded_files or not os.path.exists(local_path):
+                        self.download_file(abs_url, local_path)
+                    
+                    rel_path = os.path.relpath(local_path, self.output_dir)
+                    return f'url({rel_path})'
+                
+                tag['style'] = re.sub(url_pattern, replace_inline_url, style_content)
         
         # Save modified HTML
         output_html = os.path.join(self.output_dir, 'index.html')
