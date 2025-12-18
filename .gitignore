@@ -11,7 +11,7 @@
 !scraper.py
 !scrap-everything.py
 !link-replacer.py
-
+!local_scraper.py
 # Track documentation files
 !*.md
 
