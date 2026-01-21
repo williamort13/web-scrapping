@@ -564,8 +564,8 @@ class RecursiveWebsiteScraper:
 
 if __name__ == '__main__':
     # Configuration
-    TARGET_URL = 'https://' # <- put your scrap target url here
-    OUTPUT_DIR = 'scrap-result' # <- this is the result folder name change according your needs
+    TARGET_URL = '' # <- put your scrap target url here
+    OUTPUT_DIR = '' # <- this is the result folder name change according your needs
     MAX_PAGES = 100  # Set to None for unlimited, or a number to limit
     DELAY = 0.5  # Delay between requests in seconds
     

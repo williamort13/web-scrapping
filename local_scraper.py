@@ -11,8 +11,21 @@ class LocalHtmlScraper:
         self.output_dir = output_dir
         self.base_url = base_url  # Optional: override base URL for resolving relative paths
         self.session = requests.Session()
+        
+        # Complete browser headers to bypass 403 Forbidden errors
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
         })
         
         # Create output directories
@@ -54,11 +67,42 @@ class LocalHtmlScraper:
         
         return None
         
-    def download_file(self, url, local_path):
+    def download_file(self, url, local_path, referer=None):
         """Download a file from URL to local path"""
         try:
             print(f"Downloading: {url}")
-            response = self.session.get(url, timeout=30)
+            
+            # Set Referer header to make request look like it comes from the original page
+            headers = {}
+            if referer:
+                headers['Referer'] = referer
+                headers['Origin'] = referer
+            
+            # Update Accept header based on file type
+            parsed = urlparse(url)
+            ext = os.path.splitext(parsed.path)[1].lower()
+            if ext in ['.css']:
+                headers['Accept'] = 'text/css,*/*;q=0.1'
+            elif ext in ['.js', '.mjs']:
+                headers['Accept'] = '*/*'
+            elif ext in ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico']:
+                headers['Accept'] = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+            elif ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']:
+                headers['Accept'] = 'font/woff2,font/woff,application/font-woff,*/*;q=0.1'
+            
+            response = self.session.get(url, timeout=30, headers=headers, allow_redirects=True)
+            
+            # Check for 403 Forbidden - try with different approach
+            if response.status_code == 403:
+                print(f"  Got 403 Forbidden, trying with updated headers...")
+                # Try without Sec-Fetch headers and with simpler Accept header
+                retry_headers = {}
+                if referer:
+                    retry_headers['Referer'] = referer
+                # Use a simpler, more permissive Accept header
+                retry_headers['Accept'] = '*/*'
+                response = self.session.get(url, timeout=30, headers=retry_headers, allow_redirects=True)
+            
             response.raise_for_status()
             
             # Create directory if needed
@@ -67,10 +111,17 @@ class LocalHtmlScraper:
             # Write file
             with open(local_path, 'wb') as f:
                 f.write(response.content)
-            print(f"Saved: {local_path}")
+            print(f"  ✓ Saved: {local_path}")
             return True
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403:
+                print(f"  ✗ 403 Forbidden: {url}")
+                print(f"    (Server is blocking access to this resource)")
+            else:
+                print(f"  ✗ HTTP Error {e.response.status_code}: {url}")
+            return False
         except Exception as e:
-            print(f"Error downloading {url}: {str(e)}")
+            print(f"  ✗ Error downloading {url}: {str(e)}")
             return False
     
     def get_local_path(self, url, resource_type='other'):
@@ -155,7 +206,7 @@ class LocalHtmlScraper:
             
             # Download resource if not already downloaded
             if abs_url not in self.downloaded_files or not os.path.exists(local_path):
-                self.download_file(abs_url, local_path)
+                self.download_file(abs_url, local_path, referer=css_url)
             
             # Return relative path from CSS directory
             css_local_path = self.downloaded_files.get(css_url, css_url)
@@ -192,7 +243,7 @@ class LocalHtmlScraper:
                             img_url = self.make_absolute_url(src_value, base_url)
                             local_path = self.get_local_path(img_url, 'images')
                             
-                            if self.download_file(img_url, local_path):
+                            if self.download_file(img_url, local_path, referer=base_url):
                                 tag[attr_name] = os.path.relpath(local_path, self.output_dir)
         
         # Also handle regular img srcset
@@ -216,7 +267,7 @@ class LocalHtmlScraper:
                 img_url = self.make_absolute_url(img_url_part, base_url)
                 local_path = self.get_local_path(img_url, 'images')
                 
-                if self.download_file(img_url, local_path):
+                if self.download_file(img_url, local_path, referer=base_url):
                     rel_path = os.path.relpath(local_path, self.output_dir)
                     srcset_parts.append(f"{rel_path} {descriptor}".strip())
         
@@ -255,7 +306,7 @@ class LocalHtmlScraper:
                     css_url = self.make_absolute_url(href, base_url) if base_url else href
                     local_path = self.get_local_path(css_url, 'css')
                     
-                    if self.download_file(css_url, local_path):
+                    if self.download_file(css_url, local_path, referer=base_url):
                         # Process CSS content for embedded resources
                         try:
                             with open(local_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -278,7 +329,7 @@ class LocalHtmlScraper:
                 js_url = self.make_absolute_url(src, base_url) if base_url else src
                 local_path = self.get_local_path(js_url, 'js')
                 
-                if self.download_file(js_url, local_path):
+                if self.download_file(js_url, local_path, referer=base_url):
                     script['src'] = os.path.relpath(local_path, self.output_dir)
         
         # Process all images (including amp-img)
@@ -293,7 +344,7 @@ class LocalHtmlScraper:
                     icon_url = self.make_absolute_url(href, base_url) if base_url else href
                     local_path = self.get_local_path(icon_url, 'images')
                     
-                    if self.download_file(icon_url, local_path):
+                    if self.download_file(icon_url, local_path, referer=base_url):
                         link['href'] = os.path.relpath(local_path, self.output_dir)
         
         # Process background images in style attributes
@@ -313,7 +364,7 @@ class LocalHtmlScraper:
                         local_path = self.get_local_path(abs_url, 'images')
                         
                         if abs_url not in self.downloaded_files or not os.path.exists(local_path):
-                            self.download_file(abs_url, local_path)
+                            self.download_file(abs_url, local_path, referer=base_url)
                         
                         rel_path = os.path.relpath(local_path, self.output_dir)
                         return f'url({rel_path})'
@@ -336,11 +387,12 @@ class LocalHtmlScraper:
 
 if __name__ == '__main__':
     # Configuration
-    TARGET = 'target/index.html'  # Local HTML file path
-    OUTPUT = 'dw222-amp-utama'    # Output directory
+    TARGET = ''  # Local HTML file path
+    OUTPUT = ''    # Output directory
     BASE_URL = None               # Optional: override base URL (e.g., 'https://example.com/')
     
     # Create scraper and run
     scraper = LocalHtmlScraper(TARGET, OUTPUT, BASE_URL)
     scraper.scrape()
+
 
