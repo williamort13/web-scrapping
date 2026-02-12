@@ -232,6 +232,10 @@ class LocalHtmlScraper:
             if resource_url.startswith('data:'):
                 return match.group(0)
             
+            # Skip font files - keep original URLs
+            if any(ext in resource_url.lower() for ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']):
+                return match.group(0)  # Keep original font URL
+            
             # Make absolute URL
             abs_url = self.make_absolute_url(resource_url, css_url)
             local_path = self.get_local_path(abs_url)
@@ -433,6 +437,10 @@ class LocalHtmlScraper:
                     resource_url = match.group(1)
                     if resource_url.startswith('data:'):
                         return match.group(0)
+                    
+                    # Skip font files - keep original URLs
+                    if any(ext in resource_url.lower() for ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']):
+                        return match.group(0)  # Keep original font URL
                     
                     if self.is_remote_url(resource_url) or base_url:
                         abs_url = self.make_absolute_url(resource_url, base_url) if base_url else resource_url

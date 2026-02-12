@@ -138,6 +138,10 @@ class WebsiteScraper:
             if resource_url.startswith('data:'):
                 return match.group(0)
             
+            # Skip font files - keep original URLs
+            if any(ext in resource_url.lower() for ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']):
+                return match.group(0)  # Keep original font URL
+            
             # Make absolute URL
             abs_url = urljoin(css_url, resource_url)
             local_path = self.get_local_path(abs_url)
@@ -353,6 +357,10 @@ class WebsiteScraper:
                     if resource_url.startswith('data:'):
                         return match.group(0)
                     
+                    # Skip font files - keep original URLs
+                    if any(ext in resource_url.lower() for ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']):
+                        return match.group(0)  # Keep original font URL
+                    
                     abs_url = urljoin(self.base_url, resource_url)
                     local_path = self.get_local_path(abs_url, 'images')
                     
@@ -477,8 +485,8 @@ class WebsiteScraper:
 
 if __name__ == '__main__':
     # Configuration
-    TARGET_URL = ''
-    OUTPUT_DIR = ''
+    TARGET_URL = 'https://www.birdiesmtx.com/food'
+    OUTPUT_DIR = 'test-scrap'
     
     # Languages to scrape (add or remove as needed)
     # Available: en, id, kr, cn, jp, th, my, kh, hi, ta, te, vi, bn, pt

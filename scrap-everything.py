@@ -195,6 +195,10 @@ class RecursiveWebsiteScraper:
             if resource_url.startswith('data:'):
                 return match.group(0)
             
+            # Skip font files - keep original URLs
+            if any(ext in resource_url.lower() for ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']):
+                return match.group(0)  # Keep original font URL
+            
             abs_url = urljoin(css_url, resource_url)
             
             # Check if already downloaded

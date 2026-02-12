@@ -167,6 +167,10 @@ class MultiPageScraper:
             if resource_url.startswith('data:'):
                 return match.group(0)
             
+            # Skip font files - keep original URLs
+            if any(ext in resource_url.lower() for ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']):
+                return match.group(0)  # Keep original font URL
+            
             abs_url = urljoin(css_url, resource_url)
             local_path = self.get_local_path(abs_url)
             
@@ -345,6 +349,10 @@ class MultiPageScraper:
                     resource_url = match.group(1)
                     if resource_url.startswith('data:'):
                         return match.group(0)
+                    
+                    # Skip font files - keep original URLs
+                    if any(ext in resource_url.lower() for ext in ['.woff', '.woff2', '.ttf', '.eot', '.otf']):
+                        return match.group(0)  # Keep original font URL
                     
                     abs_url = urljoin(url, resource_url)
                     local_path = self.get_local_path(abs_url, 'images')

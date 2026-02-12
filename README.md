@@ -1,580 +1,663 @@
-# Website Scraper
+# Website Scraper Suite
 
-A Python-based website scraper that downloads entire websites or single pages with all their assets (CSS, JavaScript, images, fonts) for offline viewing, plus a link fixer utility to repair broken links in scraped sites.
+A comprehensive Python-based website scraping toolkit with multi-language support, asset consolidation, and link fixing capabilities. Download entire websites or single pages with all assets for offline viewing.
 
 ## 📋 Overview
 
-This project provides three powerful tools:
+This project provides **5 powerful scraping tools**:
 
-- **scraper.py** - Scrapes a single page (index.html) with all its resources
-- **scrap-everything.py** - Recursively scrapes entire websites by following internal links
-- **link-replacer.py** - Fixes broken links in scraped websites by replacing them with working URLs or local files
+1. **scraper.py** - Multi-language single page scraper with asset consolidation
+2. **local_scraper.py** - Scrapes from local HTML files, fetching remote assets
+3. **multi_page_scraper.py** - Scrapes multiple specific pages with flat output structure
+4. **scrap-everything.py** - Recursively scrapes entire websites by following internal links
+5. **link-replacer.py** - Fixes broken links in scraped websites
 
-## ✨ Features
+## ✨ Key Features
 
-### Scraping Features
+### 🌍 Multi-Language Support
+- Scrape websites in multiple languages (Thai, English, Indonesian, etc.)
+- Automatic language cookie and header management
+- Geo-location simulation for region-specific content
+- Language switcher generation for offline browsing
 
-- **Complete Asset Download**: Downloads HTML, CSS, JavaScript, images, fonts, and other resources
-- **Smart File Management**: Uses URL hashing to handle files with identical names but different query parameters
-- **CSS Processing**: Automatically processes CSS files to download embedded resources (fonts, images)
-- **Relative Path Conversion**: Converts all absolute URLs to relative paths for offline viewing
-- **Duplicate Prevention**: Tracks downloaded resources to avoid duplicate downloads
-- **Recursive Crawling**: (scrap-everything.py) Follows internal links to scrape entire websites
-- **Configurable Limits**: Set maximum pages and request delays
-- **Beautiful Sitemap**: Generates an HTML sitemap with statistics for scraped websites
-- **Responsive Image Support**: Handles srcset attributes for responsive images
+### 📦 Asset Management
+- **Smart Asset Consolidation**: Merge all CSS into one file, all JS into one file
+- **Font URL Preservation**: Keep fonts on CDN (faster, no licensing issues)
+- **Filename Normalization**: Remove version hashes from filenames
+- **Duplicate Prevention**: URL-based hashing to avoid duplicate downloads
+- **Complete Asset Download**: CSS, JavaScript, images (with srcset support)
 
-### Link Fixing Features
+### 🔧 Advanced Processing
+- **CSS Resource Extraction**: Downloads fonts, images referenced in CSS
+- **Inline Style Processing**: Handles background images in style attributes
+- **Relative Path Conversion**: All URLs converted for offline viewing
+- **Responsive Image Support**: Handles srcset and picture elements
+- **Favicon Extraction**: Downloads all icon formats
 
-- **Automatic Broken Link Detection**: Identifies non-functional links in scraped websites
-- **Flexible Replacement Options**: Replace broken links with external URLs or local files
-- **Safe Backup System**: Creates backups before modifying files (optional)
-- **Detailed Reporting**: Generates comprehensive reports of all fixed links
-- **Easy Restore**: One-command restoration from backups
-- **Batch Processing**: Processes entire directories recursively
+### 🚀 Performance & Reliability
+- **Session Management**: Persistent connections for faster downloads
+- **Configurable Delays**: Respectful crawling with rate limiting
+- **Enhanced Headers**: Browser-like headers to bypass restrictions
+- **Error Handling**: Graceful failure with detailed error messages
+- **Progress Tracking**: Real-time download status
 
 ## 🚀 Requirements
 
-- Python 3.6+
-- Required libraries:
-  ```
-  requests
-  beautifulsoup4
-  ```
+```bash
+# Core dependencies
+pip install requests beautifulsoup4
+
+# Optional (for Selenium-based scraping)
+pip install selenium webdriver-manager
+```
+
+**Python Version**: 3.6+
 
 ## 📦 Installation
 
-1. Clone the repository:
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/website-scraper.git
+cd website-scraper
 
-   ```bash
-   git clone https://github.com/yourusername/website-scraper.git
-   cd website-scraper
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install requests beautifulsoup4
-   ```
+# Install dependencies
+pip install requests beautifulsoup4
+```
 
 ## 📖 Usage Guide
 
-### Single Page Scraping (scraper.py)
+### 1. Multi-Language Single Page Scraper (scraper.py)
 
-Use this for scraping just the homepage/index page with all its resources:
+**Best for**: Landing pages, homepages, single pages in multiple languages
 
+**Features**:
+- ✅ Multi-language support (scrapes same page in different languages)
+- ✅ Asset consolidation (single CSS file, single JS file)
+- ✅ Language switcher generation
+- ✅ Filename normalization
+- ✅ Font URL preservation
+
+**Configuration**:
 ```python
-# Edit the configuration in scraper.py
 TARGET_URL = 'https://example.com/'
 OUTPUT_DIR = 'my-website'
-
-# Run the scraper
-python scraper.py
+LANGUAGES = ['th', 'en', 'id']  # Thai, English, Indonesian
+CONSOLIDATE_ASSETS = True
 ```
 
-**Output structure:**
+**Run**:
+```bash
+python3 scraper.py
+```
 
+**Output Structure**:
 ```
 my-website/
-├── index.html
+├── index-th.html          # Thai version
+├── index-en.html          # English version
+├── index-id.html          # Indonesian version
 ├── css/
-│   ├── style_a1b2c3d4.css
-│   └── theme_e5f6g7h8.css
+│   └── all-styles.css     # Consolidated CSS
 ├── js/
-│   └── script_12345678.js
-├── images/
-│   └── logo_abcdef12.png
-└── fonts/
-    └── font_fedcba98.woff2
+│   └── all-scripts.js     # Consolidated JS
+└── images/
+    ├── logo.png           # Normalized filename (no hash)
+    └── banner.jpg
 ```
 
-### Recursive Website Scraping (scrap-everything.py)
-
-Use this for scraping entire websites by following internal links:
-
+**Example**:
 ```python
-# Edit the configuration in scrap-everything.py
+# In scraper.py
+TARGET_URL = 'https://www.example.com/'
+OUTPUT_DIR = 'example-multilang'
+LANGUAGES = ['th', 'en', 'id']
+CONSOLIDATE_ASSETS = True
+
+# Run
+python3 scraper.py
+```
+
+---
+
+### 2. Local HTML Scraper (local_scraper.py)
+
+**Best for**: Scraping from saved HTML files, bypassing Cloudflare/bot protection
+
+**Features**:
+- ✅ Scrapes from local HTML file
+- ✅ Fetches remote CSS, JS, images
+- ✅ Enhanced headers to bypass 403 Forbidden
+- ✅ Asset consolidation
+- ✅ Font URL preservation
+
+**Use Cases**:
+- Manually save page past Cloudflare → scrape assets locally
+- Testing/development without hitting live server
+- Scraping from archived HTML files
+
+**Configuration**:
+```python
+TARGET_HTML = './saved-page.html'
+OUTPUT_DIR = 'scraped-local'
+BASE_URL = 'https://example.com/'  # For resolving relative URLs
+CONSOLIDATE_ASSETS = True
+```
+
+**Run**:
+```bash
+python3 local_scraper.py
+```
+
+**Workflow Example**:
+```bash
+# Step 1: Manually save page in browser (bypasses Cloudflare)
+# File → Save As → "Webpage, HTML Only" → saved-page.html
+
+# Step 2: Configure local_scraper.py
+TARGET_HTML = './saved-page.html'
+BASE_URL = 'https://example.com/'
+
+# Step 3: Run scraper
+python3 local_scraper.py
+
+# Result: All CSS, JS, images downloaded from remote URLs
+```
+
+---
+
+### 3. Multi-Page Scraper (multi_page_scraper.py)
+
+**Best for**: Scraping specific pages (not entire site) with flat structure
+
+**Features**:
+- ✅ Scrapes multiple specific URLs
+- ✅ Flat output structure (all HTML files at root level)
+- ✅ Asset consolidation across all pages
+- ✅ Smart filename generation from URLs
+- ✅ Font URL preservation
+
+**Configuration**:
+```python
+TARGET_URLS = [
+    'https://example.com/',
+    'https://example.com/about',
+    'https://example.com/contact'
+]
+OUTPUT_DIR = 'multi-page-site'
+CONSOLIDATE_ASSETS = True
+DELAY = 1.0  # Seconds between requests
+```
+
+**Run**:
+```bash
+python3 multi_page_scraper.py
+```
+
+**Output Structure**:
+```
+multi-page-site/
+├── index.html             # From https://example.com/
+├── about.html             # From https://example.com/about
+├── contact.html           # From https://example.com/contact
+├── css/
+│   └── all-styles.css     # Consolidated CSS from all pages
+├── js/
+│   └── all-scripts.js     # Consolidated JS from all pages
+└── images/
+    └── (shared images)
+```
+
+**URL to Filename Mapping**:
+```
+https://example.com/                    → index.html
+https://example.com/about               → about.html
+https://example.com/products/shoes      → shoes.html
+https://example.com/blog/my-post        → my-post.html
+```
+
+---
+
+### 4. Recursive Website Scraper (scrap-everything.py)
+
+**Best for**: Downloading entire websites by following internal links
+
+**Features**:
+- ✅ Recursive crawling (follows internal links)
+- ✅ Same-domain restriction
+- ✅ Asset consolidation
+- ✅ Sitemap generation
+- ✅ Configurable depth/page limits
+- ✅ Font URL preservation
+
+**Configuration**:
+```python
 TARGET_URL = 'https://example.com/'
 OUTPUT_DIR = 'full-website'
-MAX_PAGES = 100  # Set to None for unlimited
-DELAY = 0.5      # Delay between requests in seconds
-
-# Run the scraper
-python scrap-everything.py
+MAX_PAGES = 100        # Limit pages (None = unlimited)
+DELAY = 0.5           # Seconds between requests
+CONSOLIDATE_ASSETS = True
 ```
 
-**Output structure:**
+**Run**:
+```bash
+python3 scrap-everything.py
+```
 
+**Output Structure**:
 ```
 full-website/
 ├── index.html
 ├── about/
 │   └── index.html
-├── contact/
-│   └── index.html
+├── products/
+│   ├── index.html
+│   └── shoes/
+│       └── index.html
 ├── assets/
 │   ├── css/
+│   │   └── all-styles.css    # Consolidated CSS
 │   ├── js/
+│   │   └── all-scripts.js    # Consolidated JS
 │   ├── images/
-│   ├── fonts/
-│   └── other/
-└── sitemap.html
+│   └── fonts/
+└── sitemap.html              # Auto-generated sitemap
 ```
 
-### Link Fixing (link-replacer.py)
+**Sitemap Features**:
+- Beautiful gradient design
+- Statistics (total pages, assets)
+- Organized by directory
+- Clickable links to all pages
 
-Use this to fix broken links in already-scraped websites:
+---
 
+### 5. Link Fixer (link-replacer.py)
+
+**Best for**: Fixing broken links in already-scraped websites
+
+**Features**:
+- ✅ Automatic broken link detection
+- ✅ Replace with external URL or local file
+- ✅ Safe backup system
+- ✅ Detailed reporting
+- ✅ Batch processing
+
+**Configuration**:
 ```python
-# Edit the configuration in link-replacer.py
 SCRAPED_DIRECTORY = '/path/to/scraped-website'
 REPLACEMENT_URL = 'https://example.com/'
 CREATE_BACKUP = True
 USE_LOCAL_FALLBACK = False
 LOCAL_FALLBACK_FILE = 'index.html'
-
-# Run the link fixer
-python link-replacer.py
 ```
 
-## ⚙️ Configuration Options
-
-### scraper.py
-
-```python
-TARGET_URL = 'https://example.com/'  # Website to scrape
-OUTPUT_DIR = 'scraped_website'        # Output directory
-```
-
-### scrap-everything.py
-
-```python
-TARGET_URL = 'https://example.com/'   # Website to scrape
-OUTPUT_DIR = 'scraped_website'        # Output directory
-MAX_PAGES = 100                       # Maximum pages to scrape (None = unlimited)
-DELAY = 0.5                           # Delay between requests (seconds)
-```
-
-### link-replacer.py
-
-```python
-# Directory containing scraped HTML files
-SCRAPED_DIRECTORY = '/path/to/scraped-website'
-
-# URL to replace broken links with (when USE_LOCAL_FALLBACK = False)
-REPLACEMENT_URL = 'https://example.com/'
-
-# Create backup files before modifying
-CREATE_BACKUP = True
-
-# Use local file instead of external URL for replacement
-USE_LOCAL_FALLBACK = False
-
-# Local file to link to when USE_LOCAL_FALLBACK = True
-LOCAL_FALLBACK_FILE = 'index.html'
-```
-
-## 💡 Usage Examples
-
-### Example 1: Scrape a single landing page
-
+**Run**:
 ```bash
-python scraper.py
-# Edit TARGET_URL to your desired page
-# Open scraped_website/index.html in browser
+python3 link-replacer.py
 ```
 
-### Example 2: Scrape entire documentation site
+**What Gets Fixed**:
+- ❌ `javascript:void(0)` → ✅ `https://example.com/`
+- ❌ `/missing-page` → ✅ `https://example.com/`
+- ❌ Broken relative paths → ✅ Working URLs
 
-```python
-# In scrap-everything.py
-TARGET_URL = 'https://docs.example.com/'
-OUTPUT_DIR = 'docs-offline'
-MAX_PAGES = 500
-DELAY = 1.0  # Be respectful with 1 second delay
+**What's Preserved**:
+- ✅ External links (`https://google.com`)
+- ✅ Anchor links (`#section`)
+- ✅ Email links (`mailto:`)
+- ✅ Existing local files
 
-# Run
-python scrap-everything.py
-```
+---
 
-### Example 3: Fix broken links with external URL
+## 🎯 Feature Comparison
 
-```python
-# In link-replacer.py
-SCRAPED_DIRECTORY = 'docs-offline'
-REPLACEMENT_URL = 'https://docs.example.com/'
-CREATE_BACKUP = True
-USE_LOCAL_FALLBACK = False
-
-# Run
-python link-replacer.py
-```
-
-### Example 4: Fix broken links with local fallback
-
-```python
-# In link-replacer.py
-SCRAPED_DIRECTORY = 'docs-offline'
-CREATE_BACKUP = True
-USE_LOCAL_FALLBACK = True
-LOCAL_FALLBACK_FILE = 'index.html'  # Links to root index.html
-
-# Run
-python link-replacer.py
-```
-
-### Example 5: Complete workflow
-
-```bash
-# Step 1: Scrape website
-python scrap-everything.py
-
-# Step 2: Fix any broken links
-python link-replacer.py
-
-# Step 3: Open in browser
-# Navigate to scraped_website/index.html
-```
-
-## 🔧 Link Replacer Details
-
-### What Links Get Fixed?
-
-The link replacer identifies and fixes:
-
-1. **JavaScript Links**: `href="javascript:void(0)"` or other JS functions that don't work offline
-2. **Missing Local Files**: Links to files that don't exist in the scraped directory
-3. **Broken Relative Paths**: Internal routing paths like `/desktop/slots/pragmatic` that weren't downloaded
-4. **Non-existent Resources**: Links pointing to resources that failed to download during scraping
-
-### What Links Are Preserved?
-
-The link replacer keeps these links intact:
-
-- **External Links**: `http://` and `https://` links to other websites
-- **Functional Anchors**: `#section` links within the same page
-- **Email Links**: `mailto:` links
-- **Phone Links**: `tel:` links
-- **Existing Local Files**: Links to files that exist in the scraped directory
-
-### Replacement Modes
-
-#### Mode 1: External URL Replacement (Default)
-
-```python
-USE_LOCAL_FALLBACK = False
-REPLACEMENT_URL = 'https://example.com/'
-```
-
-All broken links will be replaced with the external URL. Good for:
-
-- Creating a hybrid online/offline site
-- Linking back to the live website for missing pages
-- Maintaining functionality for dynamic content
-
-#### Mode 2: Local File Replacement
-
-```python
-USE_LOCAL_FALLBACK = True
-LOCAL_FALLBACK_FILE = 'index.html'
-```
-
-All broken links will point to a local file. Good for:
-
-- Fully offline websites
-- Creating a fallback home page
-- Redirecting to a custom error page
-
-**Example configurations:**
-
-```python
-# Link to root homepage
-LOCAL_FALLBACK_FILE = 'index.html'
-
-# Link to contact page
-LOCAL_FALLBACK_FILE = 'contact/index.html'
-
-# Link to custom 404 page
-LOCAL_FALLBACK_FILE = 'pages/404.html'
-```
-
-### Backup and Restore
-
-#### Creating Backups
-
-```python
-CREATE_BACKUP = True  # Automatically creates .backup files
-```
-
-Before modifying any HTML file, a backup is created with `.backup` extension:
-
-```
-index.html          → Modified file
-index.html.backup   → Original backup
-```
-
-#### Restoring from Backups
-
-To undo all changes and restore original files:
-
-```python
-# In link-replacer.py main() function, uncomment:
-fixer.restore_backups()
-
-# Or run programmatically:
-from link_replacer import LinkFixer
-
-fixer = LinkFixer(directory='scraped_website', replacement_url='')
-fixer.restore_backups()
-```
-
-This will:
-
-1. Find all `.backup` files
-2. Restore them to original filenames
-3. Delete the backup files
-4. Print restoration summary
-
-### Output Reports
-
-The link replacer generates detailed reports:
-
-```
-============================================================
-Starting Link Fixer
-============================================================
-Directory: scraped_website
-Replacement URL: https://example.com/
-Backup enabled: True
-============================================================
-
-Found 15 HTML file(s)
-
-Processing: scraped_website/index.html
-  ❌ Broken link found: /desktop/slots/pragmatic
-  ✅ Replacing with: https://example.com/
-  ❌ Broken link found: javascript:void(0)
-  ✅ Replacing with: https://example.com/
-  💾 Backup created: scraped_website/index.html.backup
-  ✨ Fixed 2 broken link(s)
-
-Processing: scraped_website/about/index.html
-  ✓ No broken links found
-
-============================================================
-SUMMARY
-============================================================
-Files processed: 15
-Total links fixed: 23
-
-============================================================
-DETAILED REPORT
-============================================================
-
-File: scraped_website/index.html
-  Original: /desktop/slots/pragmatic
-  Replaced: https://example.com/
-
-File: scraped_website/index.html
-  Original: javascript:void(0)
-  Replaced: https://example.com/
-
-============================================================
-✅ All done!
-============================================================
-```
-
-## 🎯 How It Works
-
-### Scraping Process
-
-1. **Fetches the HTML**: Downloads the target page(s)
-2. **Parses Content**: Uses BeautifulSoup to parse HTML and find all resource links
-3. **Downloads Assets**: Downloads CSS, JS, images, fonts, and other resources
-4. **Processes CSS**: Scans CSS files for embedded resources (fonts, images in url())
-5. **Updates Paths**: Converts all absolute URLs to relative paths
-6. **Handles Duplicates**: Uses URL hashing to create unique filenames for resources with same names but different parameters
-7. **Creates Sitemap**: (scrap-everything.py) Generates an HTML sitemap of all scraped pages
-
-### Link Fixing Process
-
-1. **Scans Directory**: Recursively finds all HTML files
-2. **Parses HTML**: Uses BeautifulSoup to find all `<a>` tags with `href` attributes
-3. **Validates Links**: Checks if each link is functional:
-   - Tests if local files exist
-   - Identifies JavaScript links
-   - Detects broken relative paths
-4. **Replaces Broken Links**: Updates broken links with replacement URL or local file
-5. **Creates Backups**: Saves original files before modification (if enabled)
-6. **Saves Changes**: Writes updated HTML with fixed links
-7. **Generates Report**: Creates detailed summary of all changes
+| Feature | scraper.py | local_scraper.py | multi_page_scraper.py | scrap-everything.py |
+|---------|-----------|------------------|----------------------|---------------------|
+| Multi-language | ✅ | ❌ | ❌ | ❌ |
+| Asset Consolidation | ✅ | ✅ | ✅ | ✅ |
+| Font Preservation | ✅ | ✅ | ✅ | ✅ |
+| Filename Normalization | ✅ | ✅ | ✅ | ✅ |
+| Local HTML Input | ❌ | ✅ | ❌ | ❌ |
+| Multiple Pages | ❌ | ❌ | ✅ | ✅ |
+| Recursive Crawling | ❌ | ❌ | ❌ | ✅ |
+| Flat Output | ❌ | ❌ | ✅ | ❌ |
+| Sitemap Generation | ❌ | ❌ | ❌ | ✅ |
+| Language Switcher | ✅ | ❌ | ❌ | ❌ |
 
 ## 🔧 Advanced Features
 
-### Unique Filename Generation
+### Asset Consolidation
 
-The scraper handles cases where multiple resources have the same filename but different query parameters:
-
+**Before** (without consolidation):
 ```
-/css/style.css?v=1.0  →  style_a1b2c3d4.css
-/css/style.css?v=2.0  →  style_e5f6g7h8.css
+output/
+├── css/
+│   ├── style1_a1b2c3d4.css
+│   ├── style2_e5f6g7h8.css
+│   ├── theme_12345678.css
+│   └── mobile_abcdef12.css
+└── js/
+    ├── main_11111111.js
+    ├── vendor_22222222.js
+    └── app_33333333.js
 ```
 
-### CSS Resource Processing
+**After** (with consolidation):
+```
+output/
+├── css/
+│   └── all-styles.css      # All CSS merged
+└── js/
+    └── all-scripts.js      # All JS merged
+```
 
-Automatically downloads resources referenced in CSS:
+**Benefits**:
+- Fewer HTTP requests
+- Easier to manage
+- Smaller file count
+- Faster page loads
 
+### Font URL Preservation
+
+**Why keep fonts external?**
+- ✅ Fonts load from CDN (faster, cached)
+- ✅ No licensing issues
+- ✅ Smaller scraped output
+- ✅ Always up-to-date
+
+**Example**:
 ```css
-/* Original CSS */
-background-image: url("/images/bg.png");
-font-face: url("/fonts/font.woff2");
-
-/* Processed CSS */
-background-image: url("../images/bg_12345678.png");
-font-face: url("../fonts/font_abcdef12.woff2");
+/* Fonts stay on Google Fonts CDN */
+@font-face {
+    font-family: 'Roboto';
+    src: url('https://fonts.googleapis.com/...woff2');  /* External! */
+}
 ```
 
-### Intelligent Link Detection
+### Filename Normalization
 
-The link fixer intelligently categorizes links:
-
-```html
-<!-- FIXED: JavaScript link -->
-<a href="javascript:void(0)">Click</a>
-→ <a href="https://example.com/">Click</a>
-
-<!-- FIXED: Missing local file -->
-<a href="/pages/missing.html">Page</a>
-→ <a href="https://example.com/">Page</a>
-
-<!-- PRESERVED: Existing local file -->
-<a href="about/index.html">About</a>
-→ <a href="about/index.html">About</a>
-
-<!-- PRESERVED: External link -->
-<a href="https://google.com">Google</a>
-→ <a href="https://google.com">Google</a>
-
-<!-- PRESERVED: Anchor link -->
-<a href="#section">Jump</a>
-→ <a href="#section">Jump</a>
+**Before**:
+```
+images/
+├── logo_3154c924.png
+├── banner_desktop-js_3154c924.jpg
+└── icon_a1b2c3d4e5f6.svg
 ```
 
-### Cross-Platform Path Handling
+**After**:
+```
+images/
+├── logo.png           # Clean filename
+├── banner.jpg
+└── icon.svg
+```
 
-Automatically handles path separators across Windows, macOS, and Linux:
+### Multi-Language Support
+
+**scraper.py** can scrape the same page in multiple languages:
 
 ```python
-# Windows: scraped_website\pages\index.html
-# Unix: scraped_website/pages/index.html
-# Output: Always uses forward slashes for web compatibility
+LANGUAGES = ['th', 'en', 'id']
 ```
 
-### Respectful Crawling
+**Output**:
+```
+output/
+├── index-th.html      # Thai version
+├── index-en.html      # English version
+├── index-id.html      # Indonesian version
+└── (shared assets)
+```
 
-- Configurable delay between requests
-- Only follows links within the same domain
-- Respects robots.txt (manual checking recommended)
+**Language Switcher**:
+Each HTML file includes a language switcher that links to other language versions.
+
+### Geo-Location Simulation
+
+Scrapers automatically set cookies for region-specific content:
+
+```python
+# For Thai language
+cookies: country=TH, geo=TH, region=TH
+headers: Accept-Language: th-TH,th;q=0.9
+```
+
+## 💡 Common Workflows
+
+### Workflow 1: Multi-Language Landing Page
+
+```bash
+# 1. Configure scraper.py
+TARGET_URL = 'https://example.com/'
+LANGUAGES = ['th', 'en', 'id']
+CONSOLIDATE_ASSETS = True
+
+# 2. Run scraper
+python3 scraper.py
+
+# 3. Result: 3 HTML files (one per language) with shared assets
+```
+
+### Workflow 2: Bypass Cloudflare Protection
+
+```bash
+# 1. Manually open site in browser
+# 2. Wait for Cloudflare challenge to pass
+# 3. Save page: File → Save As → "Webpage, HTML Only"
+
+# 4. Configure local_scraper.py
+TARGET_HTML = './saved-page.html'
+BASE_URL = 'https://example.com/'
+
+# 5. Run scraper (fetches all assets)
+python3 local_scraper.py
+```
+
+### Workflow 3: Specific Pages Only
+
+```bash
+# 1. Configure multi_page_scraper.py
+TARGET_URLS = [
+    'https://example.com/',
+    'https://example.com/about',
+    'https://example.com/contact'
+]
+
+# 2. Run scraper
+python3 multi_page_scraper.py
+
+# 3. Result: Flat structure with 3 HTML files + shared assets
+```
+
+### Workflow 4: Entire Website
+
+```bash
+# 1. Configure scrap-everything.py
+TARGET_URL = 'https://docs.example.com/'
+MAX_PAGES = 500
+DELAY = 1.0
+
+# 2. Run scraper
+python3 scrap-everything.py
+
+# 3. Result: Full site with directory structure + sitemap
+```
+
+### Workflow 5: Fix Broken Links
+
+```bash
+# 1. Scrape website (any scraper)
+python3 scrap-everything.py
+
+# 2. Configure link-replacer.py
+SCRAPED_DIRECTORY = 'scraped_website'
+REPLACEMENT_URL = 'https://example.com/'
+
+# 3. Fix links
+python3 link-replacer.py
+
+# 4. Check detailed report
+```
 
 ## 🐛 Troubleshooting
 
 ### Scraping Issues
 
-#### Issue: "Connection timeout"
+#### "403 Forbidden" Errors
 
-**Solution**: Increase timeout in the code or check your internet connection
-
-```python
-response = self.session.get(url, timeout=60)  # Increase from 30 to 60
-```
-
-#### Issue: "Some CSS files are missing"
-
-**Solution**: Check if CSS files have the same base name. The scraper now handles this with unique hashing.
-
-#### Issue: "Images not loading in offline mode"
-
-**Solution**: Ensure you're opening the HTML file via the `file://` protocol. Some browsers have security restrictions - try using a local server:
-
+**Solution 1**: Use `local_scraper.py`
 ```bash
-python -m http.server 8000
-# Open http://localhost:8000 in browser
+# Manually save page in browser → scrape locally
 ```
 
-#### Issue: "Scraper stops after few pages"
+**Solution 2**: Enhanced headers (already included)
+```python
+# All scrapers include browser-like headers
+'User-Agent': 'Mozilla/5.0...'
+'Accept-Language': 'th-TH,th;q=0.9'
+```
 
-**Solution**: Check `MAX_PAGES` setting or look for errors in console output. Increase `DELAY` if getting rate-limited.
+#### "Connection Timeout"
+
+**Solution**: Increase timeout
+```python
+response = self.session.get(url, timeout=60)  # Default: 30
+```
+
+#### "Some Assets Not Downloading"
+
+**Cause**: Server blocking requests
+
+**Solution**: Increase delay between requests
+```python
+DELAY = 2.0  # Increase from 0.5 to 2.0 seconds
+```
+
+#### "Fonts Not Loading"
+
+**This is normal!** Fonts are kept on external CDNs. They load from:
+- Google Fonts: `fonts.googleapis.com`
+- Adobe Fonts: `use.typekit.net`
+- Custom CDNs
+
+**Verify**: Open DevTools → Network → Filter "Font" → Should see external requests
+
+#### "Images Not Loading Offline"
+
+**Solution**: Use local server instead of `file://`
+```bash
+python3 -m http.server 8000
+# Open http://localhost:8000
+```
 
 ### Link Replacer Issues
 
-#### Issue: "No broken links found but links still don't work"
+#### "No Broken Links Found"
 
-**Solution**: The link might be functional but points to non-downloaded content. Check the detailed report and adjust `REPLACEMENT_URL` or use `USE_LOCAL_FALLBACK = True`.
+**Cause**: Links might be functional but point to non-downloaded content
 
-#### Issue: "Can't restore backups"
+**Solution**: Check detailed report and adjust settings
 
-**Solution**: Make sure backup files (`.backup`) still exist in the directory and weren't manually deleted.
+#### "Can't Restore Backups"
 
-#### Issue: "Wrong directory path"
+**Cause**: Backup files deleted
 
-**Solution**: Use absolute paths or ensure relative paths are correct:
+**Solution**: Backups are `.backup` files - don't delete them!
 
+#### "Wrong Directory Path"
+
+**Solution**: Use absolute paths
 ```python
 import os
-
-# Use absolute path
 SCRAPED_DIRECTORY = os.path.abspath('scraped_website')
-
-# Or current directory
-SCRAPED_DIRECTORY = os.path.join(os.getcwd(), 'scraped_website')
 ```
 
-#### Issue: "Local fallback file not found warning"
+## ⚙️ Configuration Reference
 
-**Solution**: Make sure the `LOCAL_FALLBACK_FILE` exists in `SCRAPED_DIRECTORY`:
-
+### scraper.py
 ```python
-# If using subdirectory
-LOCAL_FALLBACK_FILE = 'pages/home.html'
-
-# File must exist at: scraped_website/pages/home.html
+TARGET_URL = 'https://example.com/'           # Website to scrape
+OUTPUT_DIR = 'scraped_website'                # Output directory
+LANGUAGES = ['th', 'en', 'id']                # Languages to scrape
+CONSOLIDATE_ASSETS = True                     # Merge CSS/JS files
 ```
 
-#### Issue: "Links still broken after running script"
+### local_scraper.py
+```python
+TARGET_HTML = './saved-page.html'             # Local HTML file
+OUTPUT_DIR = 'scraped_website'                # Output directory
+BASE_URL = 'https://example.com/'             # For resolving URLs
+CONSOLIDATE_ASSETS = True                     # Merge CSS/JS files
+```
 
-**Solution**:
+### multi_page_scraper.py
+```python
+TARGET_URLS = [                               # List of URLs
+    'https://example.com/',
+    'https://example.com/about'
+]
+OUTPUT_DIR = 'scraped_website'                # Output directory
+CONSOLIDATE_ASSETS = True                     # Merge CSS/JS files
+DELAY = 1.0                                   # Delay between requests
+```
 
-1. Check if backups were created (files should have `.backup` copies)
-2. Verify the SCRAPED_DIRECTORY path is correct
-3. Check if HTML files were actually modified (compare timestamps)
-4. Run with `CREATE_BACKUP = True` and check the detailed report
+### scrap-everything.py
+```python
+TARGET_URL = 'https://example.com/'           # Starting URL
+OUTPUT_DIR = 'scraped_website'                # Output directory
+MAX_PAGES = 100                               # Page limit (None = unlimited)
+DELAY = 0.5                                   # Delay between requests
+CONSOLIDATE_ASSETS = True                     # Merge CSS/JS files
+```
+
+### link-replacer.py
+```python
+SCRAPED_DIRECTORY = '/path/to/scraped'        # Directory to process
+REPLACEMENT_URL = 'https://example.com/'      # Replacement URL
+CREATE_BACKUP = True                          # Create .backup files
+USE_LOCAL_FALLBACK = False                    # Use local file instead
+LOCAL_FALLBACK_FILE = 'index.html'            # Local fallback file
+```
 
 ## ⚠️ Important Notes
 
-### General
+### Legal & Ethical
+- ✅ Only scrape websites you have permission to scrape
+- ✅ Respect robots.txt and terms of service
+- ✅ Use appropriate delays (don't overwhelm servers)
+- ✅ Check copyright and licensing
 
-- **Legal**: Only scrape websites you have permission to scrape. Respect robots.txt and terms of service.
-- **Rate Limiting**: Use appropriate delays to avoid overwhelming servers. Default is 0.5 seconds.
-- **Large Websites**: For very large sites, set `MAX_PAGES` to limit the scrape or run overnight.
-- **Dynamic Content**: This scraper works with static HTML. JavaScript-rendered content won't be captured.
-- **Authentication**: Cannot scrape pages behind login walls or authentication.
+### Technical Limitations
+- ❌ **JavaScript-rendered content**: Not captured (static HTML only)
+- ❌ **Authentication**: Cannot scrape behind login walls
+- ❌ **Dynamic content**: AJAX/fetch requests not executed
+- ❌ **WebSockets**: Real-time content not captured
 
-### Link Replacer Specific
+### Best Practices
+- ✅ Start with small page limits (`MAX_PAGES = 10`)
+- ✅ Use delays (`DELAY = 1.0` or higher)
+- ✅ Create backups before link fixing
+- ✅ Test on a copy first
+- ✅ Monitor disk space for large sites
 
-- **Always Create Backups First**: Set `CREATE_BACKUP = True` when first running on a new directory
-- **Test Before Full Run**: Test on a copy of your scraped site first
-- **Check Reports**: Review the detailed report to ensure links were replaced correctly
-- **Verify Local Fallback**: Ensure the local fallback file exists before enabling `USE_LOCAL_FALLBACK`
-- **Run After Scraping**: Use link-replacer.py as a post-processing step after scraping completes
+## 📚 Additional Documentation
+
+- **FONT-HANDLING.md** - Details on font URL preservation
+- **UPDATES.md** - Asset consolidation and normalization features
+- **VPN-GUIDE.md** - When and how to use VPN for scraping
+- **MULTI-PAGE-GUIDE.md** - Multi-page scraper usage guide
+- **CLOUDFLARE-GUIDE.md** - Bypassing Cloudflare protection
+- **FIREFOX-SETUP.md** - Using Firefox for better scraping
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome! Please:
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
 
 ## 📝 License
 
@@ -583,31 +666,9 @@ This project is open source and available under the [MIT License](LICENSE).
 ## 🙋 Support
 
 For questions, issues, or feature requests:
-
 - Open a [GitHub Issue](https://github.com/yourusername/website-scraper/issues)
 - Check existing issues for solutions
-- Provide detailed error messages and steps to reproduce
-
-## 📚 Future Enhancements
-
-### Scraping
-
-- [ ] Resume interrupted scrapes
-- [ ] Parallel downloading for faster scraping
-- [ ] Exclude patterns (regex-based URL filtering)
-- [ ] Progress bar with rich/tqdm
-- [ ] Export to different formats (WARC, PDF)
-- [ ] Better error reporting and logging
-
-### Link Fixing
-
-- [ ] Interactive mode for selective link fixing
-- [ ] Custom replacement rules (regex-based)
-- [ ] Link validation with HTTP requests
-- [ ] HTML syntax error detection and fixing
-- [ ] Batch processing multiple directories
-- [ ] Configuration file support (JSON/YAML)
-- [ ] GUI interface for easier configuration
+- Provide detailed error messages and reproduction steps
 
 ## 🌟 Acknowledgments
 
