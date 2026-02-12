@@ -485,8 +485,8 @@ class WebsiteScraper:
 
 if __name__ == '__main__':
     # Configuration
-    TARGET_URL = 'https://www.birdiesmtx.com/food'
-    OUTPUT_DIR = 'test-scrap'
+    TARGET_URL = ''
+    OUTPUT_DIR = ''
     
     # Languages to scrape (add or remove as needed)
     # Available: en, id, kr, cn, jp, th, my, kh, hi, ta, te, vi, bn, pt
