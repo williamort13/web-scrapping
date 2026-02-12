@@ -12,6 +12,7 @@
 !scrap-everything.py
 !link-replacer.py
 !local_scraper.py
+!multi_page_scraper.py
 !target/*
 # Track documentation files
 !*.md

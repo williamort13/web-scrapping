@@ -6,17 +6,18 @@ from urllib.parse import urljoin, urlparse
 import hashlib
 
 class LocalHtmlScraper:
-    def __init__(self, html_file, output_dir='scraped_website', base_url=None):
+    def __init__(self, html_file, output_dir='scraped_website', base_url=None, consolidate_assets=True):
         self.html_file = html_file
         self.output_dir = output_dir
         self.base_url = base_url  # Optional: override base URL for resolving relative paths
+        self.consolidate_assets = consolidate_assets
         self.session = requests.Session()
         
         # Complete browser headers to bypass 403 Forbidden errors
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Language': 'th-TH,th;q=0.9,en-US,en;q=0.8',  # Prefer Thai language
             'Accept-Encoding': 'gzip, deflate, br',
             'DNT': '1',
             'Connection': 'keep-alive',
@@ -38,6 +39,10 @@ class LocalHtmlScraper:
         
         # Track downloaded files to avoid duplicates
         self.downloaded_files = {}
+        
+        # For consolidation
+        self.all_css_content = []
+        self.all_js_content = []
         
     def detect_base_url(self, soup):
         """Detect base URL from HTML <base> tag or first absolute URL found"""
@@ -124,6 +129,19 @@ class LocalHtmlScraper:
             print(f"  ✗ Error downloading {url}: {str(e)}")
             return False
     
+    def normalize_filename(self, filename):
+        """Remove hash/version numbers from filename"""
+        # Remove patterns like _3154c924, -3154c924, .3154c924 before extension
+        name, ext = os.path.splitext(filename)
+        
+        # Remove hash patterns (underscore/dash followed by hex digits)
+        name = re.sub(r'[_-][a-f0-9]{6,}$', '', name)
+        
+        # Remove version query strings patterns
+        name = re.sub(r'\?v=[^&]*', '', name)
+        
+        return f"{name}{ext}"
+    
     def get_local_path(self, url, resource_type='other'):
         """Generate unique local path for a resource"""
         # If we've already downloaded this URL, return the existing path
@@ -145,12 +163,6 @@ class LocalHtmlScraper:
             else:
                 ext = '.html'
         
-        # Create a hash from the full URL (including query string) to ensure uniqueness
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
-        
-        # Create unique filename: name_hash.ext
-        unique_filename = f"{name}_{url_hash}{ext}"
-        
         # Determine subdirectory based on extension or type
         ext_lower = ext.lower()
         
@@ -164,6 +176,26 @@ class LocalHtmlScraper:
             subdir = 'fonts'
         else:
             subdir = 'other'
+        
+        # Normalize filename for images (remove hashes)
+        if subdir == 'images':
+            unique_filename = self.normalize_filename(base_filename)
+            # If normalized name already exists, add a counter
+            counter = 1
+            test_filename = unique_filename
+            while any(path.endswith(test_filename) for path in self.downloaded_files.values()):
+                name_part, ext_part = os.path.splitext(unique_filename)
+                test_filename = f"{name_part}_{counter}{ext_part}"
+                counter += 1
+            unique_filename = test_filename
+        elif self.consolidate_assets and (subdir == 'css' or subdir == 'js'):
+            # For CSS/JS, we'll consolidate them later, but still need unique temp names
+            url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+            unique_filename = f"{name}_{url_hash}{ext}"
+        else:
+            # For other files, keep hash for uniqueness
+            url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+            unique_filename = f"{name}_{url_hash}{ext}"
         
         local_path = os.path.join(self.output_dir, subdir, unique_filename)
         
@@ -299,6 +331,7 @@ class LocalHtmlScraper:
         
         # Download CSS files
         print("\n=== Processing CSS files ===")
+        css_links = []
         for link in soup.find_all('link', rel='stylesheet'):
             if link.get('href'):
                 href = link['href']
@@ -314,15 +347,33 @@ class LocalHtmlScraper:
                             
                             processed_css = self.process_css(css_content, css_url)
                             
-                            with open(local_path, 'w', encoding='utf-8') as f:
-                                f.write(processed_css)
+                            if self.consolidate_assets:
+                                # Add to consolidated CSS with a comment header
+                                self.all_css_content.append(f"\n/* Source: {css_url} */\n{processed_css}")
+                                css_links.append(link)
+                            else:
+                                with open(local_path, 'w', encoding='utf-8') as f:
+                                    f.write(processed_css)
+                                link['href'] = os.path.relpath(local_path, self.output_dir)
                         except Exception as e:
                             print(f"Error processing CSS {css_url}: {str(e)}")
-                        
-                        link['href'] = os.path.relpath(local_path, self.output_dir)
+        
+        # If consolidating, create single CSS file and update links
+        if self.consolidate_assets and self.all_css_content:
+            consolidated_css_path = os.path.join(self.output_dir, 'css', 'all-styles.css')
+            with open(consolidated_css_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(self.all_css_content))
+            print(f"Created consolidated CSS: {consolidated_css_path}")
+            
+            # Remove all CSS links except the first one, update it to point to consolidated file
+            if css_links:
+                css_links[0]['href'] = 'css/all-styles.css'
+                for link in css_links[1:]:
+                    link.decompose()
         
         # Download JavaScript files
         print("\n=== Processing JavaScript files ===")
+        js_scripts = []
         for script in soup.find_all('script', src=True):
             src = script['src']
             if self.is_remote_url(src) or base_url:
@@ -330,7 +381,31 @@ class LocalHtmlScraper:
                 local_path = self.get_local_path(js_url, 'js')
                 
                 if self.download_file(js_url, local_path, referer=base_url):
-                    script['src'] = os.path.relpath(local_path, self.output_dir)
+                    if self.consolidate_assets:
+                        # Read JS content and add to consolidated
+                        try:
+                            with open(local_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                js_content = f.read()
+                            self.all_js_content.append(f"\n/* Source: {js_url} */\n{js_content}")
+                            js_scripts.append(script)
+                        except Exception as e:
+                            print(f"Error reading JS {js_url}: {str(e)}")
+                            script['src'] = os.path.relpath(local_path, self.output_dir)
+                    else:
+                        script['src'] = os.path.relpath(local_path, self.output_dir)
+        
+        # If consolidating, create single JS file and update scripts
+        if self.consolidate_assets and self.all_js_content:
+            consolidated_js_path = os.path.join(self.output_dir, 'js', 'all-scripts.js')
+            with open(consolidated_js_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(self.all_js_content))
+            print(f"Created consolidated JS: {consolidated_js_path}")
+            
+            # Remove all script tags except the first one, update it to point to consolidated file
+            if js_scripts:
+                js_scripts[0]['src'] = 'js/all-scripts.js'
+                for script in js_scripts[1:]:
+                    script.decompose()
         
         # Process all images (including amp-img)
         self.process_images(soup, base_url)
@@ -387,12 +462,15 @@ class LocalHtmlScraper:
 
 if __name__ == '__main__':
     # Configuration
-    TARGET = ''  # Local HTML file path
+    TARGET = './target/index.html'  # Local HTML file path
     OUTPUT = ''    # Output directory
-    BASE_URL = None               # Optional: override base URL (e.g., 'https://example.com/')
+    BASE_URL = ''               # Optional: override base URL (e.g., 'https://example.com/')
+    
+    # Consolidate JS/CSS files and normalize image names
+    CONSOLIDATE_ASSETS = True
     
     # Create scraper and run
-    scraper = LocalHtmlScraper(TARGET, OUTPUT, BASE_URL)
+    scraper = LocalHtmlScraper(TARGET, OUTPUT, BASE_URL, consolidate_assets=CONSOLIDATE_ASSETS)
     scraper.scrape()
 
 

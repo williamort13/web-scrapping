@@ -8,20 +8,29 @@ from collections import deque
 import hashlib
 
 class RecursiveWebsiteScraper:
-    def __init__(self, base_url, output_dir='scraped_website', max_pages=None, delay=0.5):
+    def __init__(self, base_url, output_dir='scraped_website', max_pages=None, delay=0.5, consolidate_assets=True):
         self.base_url = base_url
         self.output_dir = output_dir
         self.max_pages = max_pages
         self.delay = delay  # Delay between requests to be respectful
+        self.consolidate_assets = consolidate_assets
         
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'th-TH,th;q=0.9,en;q=0.8',  # Prefer Thai language
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
         })
         
         # Track visited URLs and downloaded resources
         self.visited_urls = set()
         self.downloaded_resources = {}  # Maps URL -> local path
+        
+        # For consolidation
+        self.all_css_content = []
+        self.all_js_content = []
+        self.css_urls = []  # Track CSS URLs for consolidation
+        self.js_urls = []   # Track JS URLs for consolidation
         
         # Parse base domain
         parsed_base = urlparse(base_url)
@@ -61,6 +70,19 @@ class RecursiveWebsiteScraper:
     def get_url_hash(self, url):
         """Generate a short hash for URL to use in filename"""
         return hashlib.md5(url.encode()).hexdigest()[:8]
+    
+    def normalize_filename(self, filename):
+        """Remove hash/version numbers from filename"""
+        # Remove patterns like _3154c924, -3154c924, .3154c924 before extension
+        name, ext = os.path.splitext(filename)
+        
+        # Remove hash patterns (underscore/dash followed by hex digits)
+        name = re.sub(r'[_-][a-f0-9]{6,}$', '', name)
+        
+        # Remove version query strings patterns
+        name = re.sub(r'\?v=[^&]*', '', name)
+        
+        return f"{name}{ext}"
     
     def download_file(self, url, local_path):
         """Download a file from URL to local path"""
@@ -140,9 +162,25 @@ class RecursiveWebsiteScraper:
             else:
                 subdir = 'assets/other'
             
-            # Create unique filename with hash (especially important for query strings)
-            url_hash = self.get_url_hash(url)
-            unique_filename = f"{name}_{url_hash}{ext}"
+            # Normalize filename for images (remove hashes)
+            if subdir == 'assets/images':
+                unique_filename = self.normalize_filename(filename)
+                # If normalized name already exists, add a counter
+                counter = 1
+                test_filename = unique_filename
+                while any(path.endswith(test_filename) for path in self.downloaded_resources.values()):
+                    name_part, ext_part = os.path.splitext(unique_filename)
+                    test_filename = f"{name_part}_{counter}{ext_part}"
+                    counter += 1
+                unique_filename = test_filename
+            elif self.consolidate_assets and (subdir == 'assets/css' or subdir == 'assets/js'):
+                # For CSS/JS, we'll consolidate them later, but still need unique temp names
+                url_hash = self.get_url_hash(url)
+                unique_filename = f"{name}_{url_hash}{ext}"
+            else:
+                # Create unique filename with hash (especially important for query strings)
+                url_hash = self.get_url_hash(url)
+                unique_filename = f"{name}_{url_hash}{ext}"
             
             local_path = os.path.join(self.output_dir, subdir, unique_filename)
         
@@ -238,15 +276,28 @@ class RecursiveWebsiteScraper:
                             
                             processed_css = self.process_css(css_content, css_url, local_path)
                             
-                            with open(local_path, 'w', encoding='utf-8') as f:
-                                f.write(processed_css)
+                            if self.consolidate_assets:
+                                # Store for consolidation
+                                if css_url not in self.css_urls:
+                                    self.all_css_content.append(f"\n/* Source: {css_url} */\n{processed_css}")
+                                    self.css_urls.append(css_url)
+                            else:
+                                with open(local_path, 'w', encoding='utf-8') as f:
+                                    f.write(processed_css)
                         except Exception as e:
                             print(f"Error processing CSS: {str(e)}")
                         
                         self.downloaded_resources[css_url] = local_path
                 
                 # Update link href with relative path
-                rel_path = os.path.relpath(local_path, page_dir).replace('\\', '/')
+                if self.consolidate_assets:
+                    # Point to consolidated CSS (will be created at the end)
+                    rel_path = os.path.relpath(
+                        os.path.join(self.output_dir, 'assets/css/all-styles.css'), 
+                        page_dir
+                    ).replace('\\', '/')
+                else:
+                    rel_path = os.path.relpath(local_path, page_dir).replace('\\', '/')
                 link['href'] = rel_path
         
         # Download JavaScript files
@@ -260,9 +311,28 @@ class RecursiveWebsiteScraper:
                 local_path = self.get_local_path(js_url, 'js')
                 
                 if self.download_file(js_url, local_path):
+                    if self.consolidate_assets:
+                        # Read and store for consolidation
+                        try:
+                            with open(local_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                js_content = f.read()
+                            if js_url not in self.js_urls:
+                                self.all_js_content.append(f"\n/* Source: {js_url} */\n{js_content}")
+                                self.js_urls.append(js_url)
+                        except Exception as e:
+                            print(f"Error reading JS: {str(e)}")
+                    
                     self.downloaded_resources[js_url] = local_path
             
-            rel_path = os.path.relpath(local_path, page_dir).replace('\\', '/')
+            # Update script src with relative path
+            if self.consolidate_assets:
+                # Point to consolidated JS (will be created at the end)
+                rel_path = os.path.relpath(
+                    os.path.join(self.output_dir, 'assets/js/all-scripts.js'), 
+                    page_dir
+                ).replace('\\', '/')
+            else:
+                rel_path = os.path.relpath(local_path, page_dir).replace('\\', '/')
             script['src'] = rel_path
         
         # Download images
@@ -349,6 +419,28 @@ class RecursiveWebsiteScraper:
         
         return new_links
     
+    def create_consolidated_files(self):
+        """Create consolidated CSS and JS files"""
+        print(f"\n{'='*60}")
+        print("Creating consolidated asset files...")
+        print(f"{'='*60}")
+        
+        # Create consolidated CSS
+        if self.all_css_content:
+            consolidated_css_path = os.path.join(self.output_dir, 'assets/css/all-styles.css')
+            with open(consolidated_css_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(self.all_css_content))
+            print(f"✓ Created consolidated CSS: {consolidated_css_path}")
+            print(f"  Combined {len(self.css_urls)} CSS files")
+        
+        # Create consolidated JS
+        if self.all_js_content:
+            consolidated_js_path = os.path.join(self.output_dir, 'assets/js/all-scripts.js')
+            with open(consolidated_js_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(self.all_js_content))
+            print(f"✓ Created consolidated JS: {consolidated_js_path}")
+            print(f"  Combined {len(self.js_urls)} JS files")
+    
     def scrape(self):
         """Main scraping function with BFS crawling"""
         print(f"Starting recursive scrape of: {self.base_url}")
@@ -381,6 +473,10 @@ class RecursiveWebsiteScraper:
             # Be respectful - delay between requests
             if queue:
                 time.sleep(self.delay)
+        
+        # Create consolidated CSS and JS files if enabled
+        if self.consolidate_assets:
+            self.create_consolidated_files()
         
         # Create index page that links to all scraped pages
         self.create_sitemap()
@@ -569,11 +665,15 @@ if __name__ == '__main__':
     MAX_PAGES = 100  # Set to None for unlimited, or a number to limit
     DELAY = 0.5  # Delay between requests in seconds
     
+    # Consolidate JS/CSS files and normalize image names
+    CONSOLIDATE_ASSETS = True
+    
     # Create scraper and run
     scraper = RecursiveWebsiteScraper(
         TARGET_URL, 
         OUTPUT_DIR, 
         max_pages=MAX_PAGES,
-        delay=DELAY
+        delay=DELAY,
+        consolidate_assets=CONSOLIDATE_ASSETS
     )
     scraper.scrape()
